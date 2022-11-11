@@ -6,7 +6,7 @@ __pycache__/
 *$py.class
 
 *.sqlite3
-env/
+venv/
 
 ### Project specific ###
 settings_local.py
