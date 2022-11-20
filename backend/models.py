@@ -1,18 +1,26 @@
+from django.contrib.auth.models import AbstractUser
 from django.db import models
-from django.contrib.auth.models import User
 
 # Create your models here.
+USER_TYPES = (
+    ('shop', 'Магазин'),
+    ('buyer', 'Покупатель'),
+)
+
+
+class User(AbstractUser):
+    user_type = models.CharField(verbose_name='Тип пользователя', choices=USER_TYPES, max_length=5, default='buyer')
 
 
 class Shop(models.Model):
     id = models.IntegerField(primary_key=True)
     name = models.CharField(max_length=50, verbose_name='Название')
-    url = models.URLField(verbose_name='URL')
+    url = models.URLField(verbose_name='Ссылка')
     # filename
 
 
 class Category(models.Model):
-    shops = models.ManyToManyField(Shop, on_delete=models.CASCADE, verbose_name='Магазин')
+    shops = models.ManyToManyField(Shop, verbose_name='Магазин')
     name = models.CharField(max_length=120, verbose_name='Название')
 
 
@@ -55,5 +63,5 @@ class OrderItem(models.Model):
 
 class Contact(models.Model):
     type = models.CharField(max_length=40, verbose_name='Канал связи')
-    user = models.ForeignKey(User, verbose_name='Заказчик')
+    user = models.ForeignKey(User, on_delete=models.CASCADE, verbose_name='Заказчик')
     value = models.CharField(max_length=300, verbose_name='Значение')
