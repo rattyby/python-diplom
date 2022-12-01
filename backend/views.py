@@ -1,15 +1,16 @@
 from django.contrib.auth.models import Group
+from django.core.exceptions import ObjectDoesNotExist
 from django.core.validators import URLValidator
 from django.http import JsonResponse
 from requests import get
-from rest_framework import viewsets, permissions, status
+from rest_framework import viewsets, permissions, status, generics, mixins
 from rest_framework.exceptions import ValidationError
 from rest_framework.views import APIView
 from yaml import Loader, load as load_yaml
 
-from .models import User, ProductInfo, Shop, Category, Product, Parameter, ProductParameter
+from .models import User, ProductInfo, Shop, Category, Product, Parameter, ProductParameter, Order
 
-from .serializers import UserSerializer, GroupSerializer, ShopSerializer, ProductInfoSerializer
+from .serializers import UserSerializer, GroupSerializer, ShopSerializer, ProductInfoSerializer, OrderSerializer
 
 
 class UserViewSet(viewsets.ModelViewSet):
@@ -18,13 +19,24 @@ class UserViewSet(viewsets.ModelViewSet):
     permission_classes = [permissions.IsAuthenticatedOrReadOnly]
 
 
+class RegisterUserView(generics.CreateAPIView):
+    """
+    Регистрация пользователя.
+    """
+    queryset = User.objects.all()
+    serializer_class = UserSerializer
+
+    def post(self, request, *args, **kwargs):
+        return self.create(request, *args, **kwargs)
+
+
 class GroupViewSet(viewsets.ModelViewSet):
     queryset = Group.objects.all()
     serializer_class = GroupSerializer
     permission_classes = [permissions.IsAuthenticatedOrReadOnly]
 
 
-class PriceUpdate(APIView):
+class PriceUpdateView(APIView):
     """
     Обновление прайса для магазина.
     """
@@ -49,17 +61,31 @@ class PriceUpdate(APIView):
             data = load_yaml(stream, Loader=Loader)
 
             # Заполняем таблицы из полученного файла.
-            user = User.objects.get(id=request.user.id)
+            try:
+                user = User.objects.get(id=request.user.id)
+            except ObjectDoesNotExist as e:
+                JsonResponse({'Status': status.HTTP_404_NOT_FOUND, 'Error': str(e)})
+
+            # Shop model.
             shop, _ = Shop.objects.get_or_create(name=data['shop'], id_user=user)
+
             for category in data['categories']:
+                # Category model.
                 category_object, _ = Category.objects.get_or_create(id=category['id'], name=category['name'])
                 category_object.shops.add(shop.id)
                 category_object.save()
+
             ProductInfo.objects.filter(shop=shop.id).delete()
             for item in data['goods']:
-                category = Category.objects.get(id=item['category'])
+                try:
+                    category = Category.objects.get(id=item['category'])
+                except ObjectDoesNotExist as e:
+                    JsonResponse({'Status': status.HTTP_404_NOT_FOUND, 'Error': str(e)})
+
+                # Product model.
                 product, _ = Product.objects.get_or_create(category=category, name=item['name'])
 
+                # ProductInfo model.
                 product_info, _ = ProductInfo.objects.get_or_create(product=product,
                                                                     shop=shop,
                                                                     external_id=item['id'],
@@ -67,15 +93,35 @@ class PriceUpdate(APIView):
                                                                     price=item['price'],
                                                                     price_rrc=item['price_rrc'],
                                                                     quantity=item['quantity'])
+
                 for name, value in item['parameters'].items():
+                    # Parameter model.
                     parameter_object, _ = Parameter.objects.get_or_create(name=name)
+
+                    # ProductParameter model.
                     ProductParameter.objects.create(product_info=product_info,
                                                     parameter=parameter_object,
                                                     value=value)
             return JsonResponse({'Status': status.HTTP_201_CREATED, 'data': request.data})
+        # No 'url' field.
         return JsonResponse({'Status': status.HTTP_400_BAD_REQUEST, 'Error': 'No URL with your price.'})
 
     def get(self, request, *args, **kwargs):
         catalog = ProductInfo.objects.all()
         serializer = ProductInfoSerializer(catalog, many=True)
         return JsonResponse({'Status': status.HTTP_200_OK, 'method': 'get'})
+
+
+class CatalogViewSet(viewsets.ModelViewSet):
+    queryset = ProductInfo.objects.all()
+    serializer_class = ProductInfoSerializer
+    permission_classes = [permissions.IsAuthenticatedOrReadOnly]
+
+    def get(self, request, *args, **kwargs):
+        return self.list(request, *args, **kwargs)
+
+
+class OrderViewSet(viewsets.ModelViewSet):
+    queryset = Order.objects.all()
+    serializer_class = OrderSerializer
+    permission_classes = [permissions.IsAuthenticatedOrReadOnly]
