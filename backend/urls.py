@@ -1,7 +1,8 @@
 from django.urls import path, include
 from rest_framework import routers
 
-from .views import PriceUpdateView, UserViewSet, GroupViewSet, RegisterUserView, CatalogViewSet, OrderViewSet
+from .views import PriceUpdateView, UserViewSet, GroupViewSet, RegisterUserView, CatalogViewSet, OrderViewSet,\
+    OrderCreateView
 
 app_name = 'backend'
 
@@ -15,10 +16,10 @@ router.register('order', OrderViewSet)
 urlpatterns = [
     path('partner/update/', PriceUpdateView.as_view(), name='price-update'),
     path('user/register/', RegisterUserView.as_view(), name='user-register'),
+    path('order/create/', OrderCreateView.as_view(), name='partner-orders'),
     # path('products', CatalogView.as_view(), name='catalog'),
     path('', include(router.urls)),
     # path('partner/state', PartnerState.as_view(), name='partner-state'),
-    # path('partner/orders', PartnerOrders.as_view(), name='partner-orders'),
     # path('user/register/confirm', ConfirmAccount.as_view(), name='user-register-confirm'),
     # path('user/<int:pk>', UserViewSet.as_view(), name='user-details'),
     # path('user/contact', ContactView.as_view(), name='user-contact'),

@@ -10,7 +10,8 @@ from yaml import Loader, load as load_yaml
 
 from .models import User, ProductInfo, Shop, Category, Product, Parameter, ProductParameter, Order
 
-from .serializers import UserSerializer, GroupSerializer, ShopSerializer, ProductInfoSerializer, OrderSerializer
+from .serializers import UserSerializer, GroupSerializer, ShopSerializer, ProductInfoSerializer, OrderSerializer, \
+    RegisterSerializer, OrderCreateSerializer
 
 
 class UserViewSet(viewsets.ModelViewSet):
@@ -24,10 +25,10 @@ class RegisterUserView(generics.CreateAPIView):
     Регистрация пользователя.
     """
     queryset = User.objects.all()
-    serializer_class = UserSerializer
+    serializer_class = RegisterSerializer
 
-    def post(self, request, *args, **kwargs):
-        return self.create(request, *args, **kwargs)
+    # def post(self, request, *args, **kwargs):
+    #     return self.create(request, *args, **kwargs)
 
 
 class GroupViewSet(viewsets.ModelViewSet):
@@ -54,7 +55,7 @@ class PriceUpdateView(APIView):
             try:
                 validate_url(url)
             except ValidationError as e:
-                return JsonResponse({'Stasus': status.HTTP_400_BAD_REQUEST, 'Error': str(e)})
+                return JsonResponse({'Status': status.HTTP_400_BAD_REQUEST, 'Error': str(e)})
 
             # Читаем файл.
             stream = get(url).content
@@ -125,3 +126,23 @@ class OrderViewSet(viewsets.ModelViewSet):
     queryset = Order.objects.all()
     serializer_class = OrderSerializer
     permission_classes = [permissions.IsAuthenticatedOrReadOnly]
+
+
+class OrderCreateView(generics.CreateAPIView):
+    queryset = Order.objects.all()
+    serializer_class = OrderCreateSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request, *args, **kwargs):
+        if not request.user.is_authenticated:
+            return JsonResponse({'Status': status.HTTP_403_FORBIDDEN, 'Error': 'Log in required.'})
+
+        try:
+            user = User.objects.get(id=request.user.id)
+        except ObjectDoesNotExist as e:
+            JsonResponse({'Status': status.HTTP_404_NOT_FOUND, 'Error': str(e)})
+
+        Order.objects.create(user=user, status='basket')
+        return JsonResponse({'Status': status.HTTP_201_CREATED, 'data': request.data})
+
+

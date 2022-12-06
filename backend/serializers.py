@@ -1,7 +1,8 @@
 from django.contrib.auth.models import Group
+from django.contrib.auth.password_validation import validate_password
 from rest_framework import serializers
 
-from .models import Shop, User, ProductInfo, Product, Category, Order
+from .models import Shop, User, ProductInfo, Product, Category, Order, OrderItem
 
 
 class UserSerializer(serializers.ModelSerializer):
@@ -9,7 +10,25 @@ class UserSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = User
-        fields = ['id', 'username', 'email', 'is_staff', 'user_type', 'groups', ]
+        fields = ['id', 'username', 'email', 'first_name', 'last_name', 'is_staff', 'user_type', 'groups', ]
+
+
+class RegisterSerializer(serializers.ModelSerializer):
+    password = serializers.CharField(write_only=True, required=True, validators=[validate_password])
+
+    class Meta:
+        model = User
+        fields = ['id', 'username', 'password', 'email', 'first_name', 'last_name', 'is_staff', 'user_type', 'groups', ]
+        extra_kwargs = {'first_name': {'required': True}}
+
+    def create(self, validated_data):
+        user = User.objects.create(
+            username=validated_data['username'],
+            first_name=validated_data['first_name'],
+        )
+        user.set_password(validated_data['password'])
+        user.save()
+        return user
 
 
 class GroupSerializer(serializers.ModelSerializer):
@@ -55,8 +74,28 @@ class ProductInfoSerializer(serializers.ModelSerializer):
         fields = ['shop', 'product', 'quantity', 'price', 'price_rrc']
 
 
+class OrderItemSerializer(serializers.ModelSerializer):
+    product = ProductSerializer(read_only=True)
+    shop = ShopShortSerializer(read_only=True)
+
+    class Meta:
+        model = OrderItem
+        fields = ['product', 'shop', 'quantity', 'price', ]
+
+
 class OrderSerializer(serializers.ModelSerializer):
     user = UserSerializer(read_only=True)
+    status = serializers.CharField(required=True)
+    products = OrderItemSerializer(read_only=True, many=True)
+
+    class Meta:
+        model = Order
+        fields = ['user', 'dt', 'status', 'products', ]
+
+
+class OrderCreateSerializer(serializers.ModelSerializer):
+    user = UserSerializer(read_only=True)
+    status = serializers.CharField(required=True)
 
     class Meta:
         model = Order

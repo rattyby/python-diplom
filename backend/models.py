@@ -83,9 +83,10 @@ class Order(models.Model):
 class OrderItem(models.Model):
     """ Товары в заказе. """
     order = models.ForeignKey(Order, on_delete=models.CASCADE, verbose_name='Заказ')
-    product = models.ForeignKey(Product, on_delete=models.CASCADE, verbose_name='Товар')
+    product = models.ForeignKey(Product, on_delete=models.CASCADE, verbose_name='Товар', related_name='products')
     shop = models.ForeignKey(Shop, on_delete=models.CASCADE, verbose_name='Магазин')
     quantity = models.PositiveIntegerField(verbose_name='Количество')
+    price = models.PositiveIntegerField(verbose_name='Цена')
 
 
 class Contact(models.Model):
