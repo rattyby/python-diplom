@@ -1,5 +1,6 @@
 from django.contrib.auth.models import Group
 from django.contrib.auth.password_validation import validate_password
+from django.core.validators import MaxValueValidator
 from rest_framework import serializers
 
 from .models import Shop, User, ProductInfo, Product, Category, Order, OrderItem
@@ -71,16 +72,15 @@ class ProductInfoSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = ProductInfo
-        fields = ['shop', 'product', 'quantity', 'price', 'price_rrc']
+        fields = ['id', 'shop', 'product', 'quantity', 'price', 'price_rrc']
 
 
 class OrderItemSerializer(serializers.ModelSerializer):
-    product = ProductSerializer(read_only=True)
-    shop = ShopShortSerializer(read_only=True)
+    product = ProductInfoSerializer(read_only=True)
 
     class Meta:
         model = OrderItem
-        fields = ['product', 'shop', 'quantity', 'price', ]
+        fields = ['product', 'quantity', ]
 
 
 class OrderSerializer(serializers.ModelSerializer):
@@ -93,10 +93,11 @@ class OrderSerializer(serializers.ModelSerializer):
         fields = ['user', 'dt', 'status', 'products', ]
 
 
-class OrderCreateSerializer(serializers.ModelSerializer):
-    user = UserSerializer(read_only=True)
-    status = serializers.CharField(required=True)
+class ProductAddSerializer(serializers.ModelSerializer):
+    shop = ShopShortSerializer(read_only=True)
+    product = ProductInfoSerializer(read_only=True)
+    quantity = serializers.IntegerField(validators=[MaxValueValidator(product['quantity'])])
 
     class Meta:
-        model = Order
-        fields = ['user', 'dt', 'status', ]
+        model = OrderItem
+        fields = ['product', 'shop', 'quantity', ]

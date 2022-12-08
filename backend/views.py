@@ -8,10 +8,10 @@ from rest_framework.exceptions import ValidationError
 from rest_framework.views import APIView
 from yaml import Loader, load as load_yaml
 
-from .models import User, ProductInfo, Shop, Category, Product, Parameter, ProductParameter, Order
+from .models import User, ProductInfo, Shop, Category, Product, Parameter, ProductParameter, Order, OrderItem
 
 from .serializers import UserSerializer, GroupSerializer, ShopSerializer, ProductInfoSerializer, OrderSerializer, \
-    RegisterSerializer, OrderCreateSerializer
+    RegisterSerializer, ProductAddSerializer
 
 
 class UserViewSet(viewsets.ModelViewSet):
@@ -125,12 +125,44 @@ class CatalogViewSet(viewsets.ModelViewSet):
 class OrderViewSet(viewsets.ModelViewSet):
     queryset = Order.objects.all()
     serializer_class = OrderSerializer
-    permission_classes = [permissions.IsAuthenticatedOrReadOnly]
+    permission_classes = [permissions.IsAuthenticated]
 
 
-class OrderCreateView(generics.CreateAPIView):
+class ProductAddView(generics.CreateAPIView):
     queryset = Order.objects.all()
-    serializer_class = OrderCreateSerializer
+    serializer_class = ProductAddSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request, *args, **kwargs):
+        """
+        Добавление товара в корзину. Если у пользователя есть заказ со статусом 'basket', то добавляется к нему,
+        иначе создаётся новый.
+        В параметрах запроса надо передавать id продукта из ProductInfo.
+        """
+        if not request.user.is_authenticated:
+            return JsonResponse({'Status': status.HTTP_403_FORBIDDEN, 'Error': 'Log in required.'})
+
+        try:
+            user = User.objects.get(id=request.user.id)
+        except ObjectDoesNotExist as e:
+            JsonResponse({'Status': status.HTTP_404_NOT_FOUND, 'Error': str(e)})
+
+        order, _ = Order.objects.get_or_create(user=user, status='basket')
+        try:
+            product = ProductInfo.objects.get(id=request.data['product'])
+        except ObjectDoesNotExist as e:
+            JsonResponse({'Status': status.HTTP_404_NOT_FOUND, 'Error': str(e)})
+        add_item, _ = OrderItem.objects.get_or_create(order=order,
+                                                      product=product,
+                                                      shop=product.shop,
+                                                      quantity=request.data['quantity'])
+
+        return JsonResponse({'Status': status.HTTP_201_CREATED, 'data': request.data})
+
+
+class ConfirmOrderView(generics.UpdateAPIView):
+    queryset = Order.objects.all()
+    serializer_class = OrderSerializer
     permission_classes = [permissions.IsAuthenticated]
 
     def post(self, request, *args, **kwargs):
@@ -141,8 +173,10 @@ class OrderCreateView(generics.CreateAPIView):
             user = User.objects.get(id=request.user.id)
         except ObjectDoesNotExist as e:
             JsonResponse({'Status': status.HTTP_404_NOT_FOUND, 'Error': str(e)})
-
-        Order.objects.create(user=user, status='basket')
+        try:
+            order = Order.objects.get(user=user, status='basket')
+        except ObjectDoesNotExist as e:
+            JsonResponse({'Status': status.HTTP_404_NOT_FOUND, 'Error': str(e)})
+        order.status = 'accepted'
+        order.save()
         return JsonResponse({'Status': status.HTTP_201_CREATED, 'data': request.data})
-
-

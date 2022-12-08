@@ -6,14 +6,13 @@ USER_TYPE_CHOICES = (
     ('shop', 'Магазин'),
     ('buyer', 'Покупатель'),
 )
-# Статусы корзины.
+# Статусы заказа.
 ORDER_STATUS_CHOICES = (
     ('basket', 'В корзине'),
-    ('ordered', 'Сделан'),
+    ('accepted', 'Принят'),
     ('payed', 'Оплачен'),
     ('posted', 'Отправлен'),
     ('delivered', 'Доставлен'),
-    ('accepted', 'Принят'),
     ('returned', 'Возвращён'),
     ('cancelled', 'Отменён'),
     ('filling', 'Собирается'),
@@ -82,11 +81,10 @@ class Order(models.Model):
 
 class OrderItem(models.Model):
     """ Товары в заказе. """
-    order = models.ForeignKey(Order, on_delete=models.CASCADE, verbose_name='Заказ')
-    product = models.ForeignKey(Product, on_delete=models.CASCADE, verbose_name='Товар', related_name='products')
+    order = models.ForeignKey(Order, on_delete=models.CASCADE, verbose_name='Заказ', related_name='products')
+    product = models.ForeignKey(ProductInfo, on_delete=models.CASCADE, verbose_name='Товар', related_name='products')
     shop = models.ForeignKey(Shop, on_delete=models.CASCADE, verbose_name='Магазин')
     quantity = models.PositiveIntegerField(verbose_name='Количество')
-    price = models.PositiveIntegerField(verbose_name='Цена')
 
 
 class Contact(models.Model):
