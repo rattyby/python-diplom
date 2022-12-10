@@ -1,7 +1,8 @@
 from django.contrib.auth.models import Group
 from django.contrib.auth.password_validation import validate_password
-from django.core.validators import MaxValueValidator
+from django.core.exceptions import ObjectDoesNotExist
 from rest_framework import serializers
+from rest_framework.exceptions import ValidationError
 
 from .models import Shop, User, ProductInfo, Product, Category, Order, OrderItem
 
@@ -85,19 +86,33 @@ class OrderItemSerializer(serializers.ModelSerializer):
 
 class OrderSerializer(serializers.ModelSerializer):
     user = UserSerializer(read_only=True)
+    address = serializers.CharField(required=True)
     status = serializers.CharField(required=True)
     products = OrderItemSerializer(read_only=True, many=True)
 
     class Meta:
         model = Order
-        fields = ['user', 'dt', 'status', 'products', ]
+        fields = ['user', 'dt', 'address', 'status', 'products', ]
 
 
 class ProductAddSerializer(serializers.ModelSerializer):
-    shop = ShopShortSerializer(read_only=True)
     product = ProductInfoSerializer(read_only=True)
-    quantity = serializers.IntegerField(validators=[MaxValueValidator(product['quantity'])])
+    quantity = serializers.IntegerField(required=True, validators=[])
 
     class Meta:
         model = OrderItem
-        fields = ['product', 'shop', 'quantity', ]
+        fields = ['product', 'quantity', ]
+
+    def validate(self, data):
+        """
+        Количество в заказе не должно превышать наличие в магазине.
+        Still not works.
+        """
+        try:
+            product = ProductInfo.objects.get(id=data['product'])
+        except ObjectDoesNotExist as e:
+            raise ValidationError('Not found such product.')
+        max_count = product['quantity']
+        if data['quantity'] > max_count:
+            raise ValidationError('Not enough items in the shop.')
+        return data

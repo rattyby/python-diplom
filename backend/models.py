@@ -77,6 +77,7 @@ class Order(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE, verbose_name='Заказчик')
     dt = models.DateTimeField(verbose_name='Дата заказа', auto_now=True)
     status = models.CharField(max_length=9, choices=ORDER_STATUS_CHOICES)
+    address = models.CharField(max_length=300, verbose_name='Адрес доставки')
 
 
 class OrderItem(models.Model):

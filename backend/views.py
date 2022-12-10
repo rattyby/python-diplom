@@ -1,5 +1,6 @@
 from django.contrib.auth.models import Group
 from django.core.exceptions import ObjectDoesNotExist
+from django.core.mail import send_mail
 from django.core.validators import URLValidator
 from django.http import JsonResponse
 from requests import get
@@ -10,7 +11,7 @@ from yaml import Loader, load as load_yaml
 
 from .models import User, ProductInfo, Shop, Category, Product, Parameter, ProductParameter, Order, OrderItem
 
-from .serializers import UserSerializer, GroupSerializer, ShopSerializer, ProductInfoSerializer, OrderSerializer, \
+from .serializers import UserSerializer, GroupSerializer, ProductInfoSerializer, OrderSerializer, \
     RegisterSerializer, ProductAddSerializer
 
 
@@ -27,8 +28,13 @@ class RegisterUserView(generics.CreateAPIView):
     queryset = User.objects.all()
     serializer_class = RegisterSerializer
 
-    # def post(self, request, *args, **kwargs):
-    #     return self.create(request, *args, **kwargs)
+    def post(self, request, *args, **kwargs):
+        try:
+            email = request.data.get('email')
+            send_mail("You've registered", "You've registered in our shop", "noreply@host", email)
+        except IndexError:
+            pass
+        return self.create(request, *args, **kwargs)
 
 
 class GroupViewSet(viewsets.ModelViewSet):
@@ -179,4 +185,5 @@ class ConfirmOrderView(generics.UpdateAPIView):
             JsonResponse({'Status': status.HTTP_404_NOT_FOUND, 'Error': str(e)})
         order.status = 'accepted'
         order.save()
+        send_mail("Заказ принят", "Ваш заказан оформлен", "noreply@host", user.email)
         return JsonResponse({'Status': status.HTTP_201_CREATED, 'data': request.data})
