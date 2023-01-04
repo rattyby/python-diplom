@@ -1,0 +1,2 @@
+[run]
+omit=tests/*,venv/*,.pytest_cache/*,data/*,backend/migrations/*,manage.py,*sgi.py,*tests.py

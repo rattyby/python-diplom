@@ -10,7 +10,7 @@ app_name = 'backend'
 router = routers.DefaultRouter()
 router.register('user', UserViewSet)
 router.register('group', GroupViewSet)
-router.register('product', CatalogViewSet)
+router.register('product', CatalogViewSet, basename='product')
 router.register('order', OrderViewSet)
 
 urlpatterns = [
